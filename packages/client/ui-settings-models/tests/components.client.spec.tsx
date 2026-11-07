@@ -188,6 +188,13 @@ function scriptedFace(overrides: {
   const set = overrides.set ?? vi.fn(() => Promise.resolve(remoteOk(undefined)))
   const unset = overrides.unset ?? vi.fn(() => Promise.resolve(remoteOk(undefined)))
   const face = {
+    authorization: {
+      list: vi.fn(() => Promise.resolve(remoteOk<unknown[]>([]))),
+      begin: vi.fn(),
+      answer: vi.fn(),
+      cancel: vi.fn(),
+      signOut: vi.fn(),
+    },
     llm: {
       listProviders: vi.fn((): ReturnType<PageContext['remote']['llm']['listProviders']> => Promise.resolve(remoteOk([
         { id: 'deepseek-official', name: 'DeepSeek' },
@@ -2246,6 +2253,29 @@ it('refreshes a blank editor from saved credentials to environment detection wit
   expect(screen.getByText(en.keyFallbackDetected.replace('{hint}', 'OPENAI_API_KEY'))).toBeTruthy()
   expect(screen.queryByText(/^API key source:/)).toBeNull()
   expect(face.credentials.describe).toHaveBeenCalledTimes(reads + 1)
+})
+
+it('shows the sign-in card instead of a key field for a keyless OAuth route with a registered flow', async () => {
+  const { face } = scriptedFace()
+  face.authorization.list.mockResolvedValue(remoteOk([{
+    key: 'llm-pi-ai/anthropic-oauth', label: 'anthropicOauth', methods: [{ id: 'oauth', label: 'Sign in' }], inFlight: false, signedIn: false,
+  }]))
+  render(<ProviderEditor provider="anthropic-oauth" displayName="anthropicOauth"
+    namespace={wireNamespaces().find(view => view.ns === 'llm-pi-ai')!} settingsPath={['providers', 'anthropic-oauth']}
+    schema={settingsSchema} operations={operationsWith(face)} t={t} readOnly={false} onClose={vi.fn()}
+    nativeAuth={{ env: [], oauth: true }} />)
+  expect(await screen.findByRole('button', { name: en.oauthSignIn })).toBeTruthy()
+  expect(screen.queryByLabelText(en.keyInput)).toBeNull()
+})
+
+it('shows neither card nor key field when the host mounts no sign-in calls', () => {
+  const { authorization: _unmounted, ...withoutSignIn } = operationsWith(scriptedFace().face)
+  render(<ProviderEditor provider="anthropic-oauth" displayName="anthropicOauth"
+    namespace={wireNamespaces().find(view => view.ns === 'llm-pi-ai')!} settingsPath={['providers', 'anthropic-oauth']}
+    schema={settingsSchema} operations={withoutSignIn} t={t} readOnly={false} onClose={vi.fn()}
+    nativeAuth={{ env: [], oauth: true }} />)
+  expect(screen.queryByRole('button', { name: en.oauthSignIn })).toBeNull()
+  expect(screen.queryByLabelText(en.keyInput)).toBeNull()
 })
 
 it('keeps an OAuth-only provider on its native authentication path', () => {

@@ -41,6 +41,7 @@ import type { ModelsOperations } from './operations.ts'
 import type { SettingsSchemaOperations } from './schema-operations.ts'
 import type { en } from './locales.ts'
 import { ApiKeyInput } from './ApiKeyInput.tsx'
+import { OAuthSignInCard } from './OAuthSignInCard.tsx'
 import styles from './ModelsSection.module.css'
 
 /** Per-adapter-family curated field sets (unknown namespaces get the hint alone). */
@@ -416,7 +417,10 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
     return (
       <>
         {keylessNativeAuth
-          ? null
+          // A route that only signs in has no key to store: its card replaces the field.
+          ? props.operations.authorization === undefined
+            ? null
+            : <OAuthSignInCard route={props.provider} operations={props.operations.authorization} t={t} disabled={disabled} />
           : <div className={styles['field']}>
             <span className={styles['fieldLabel']}>
               {t('keyInput')}
