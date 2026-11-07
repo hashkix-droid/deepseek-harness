@@ -185,8 +185,57 @@ function servesChat(provider: Provider): boolean {
  * @returns the catalog provider index, in catalog order.
  */
 function catalogProviders(): Map<string, Provider> {
-  providerIndex ??= new Map(builtinProviders().filter(servesChat).map(provider => [provider.id, provider]))
-  return providerIndex
+  if (providerIndex !== undefined) return providerIndex
+  const index = new Map<string, Provider>()
+  for (const provider of builtinProviders().filter(servesChat)) {
+    index.set(provider.id, provider)
+    for (const [aliasId, alias] of Object.entries(ROUTE_ALIASES)) {
+      const { oauth } = provider.auth
+      if (alias.base === provider.id && oauth !== undefined) {
+        index.set(aliasId, aliasProvider(aliasId, alias, provider, oauth))
+      }
+    }
+  }
+  providerIndex = index
+  return index
+}
+
+/**
+ * Routes this adapter serves as OAuth-only twins of an installed catalog
+ * provider. The twin keeps the base's models and wire behaviour but is a route
+ * of its own, so it owns a separate credential record and can coexist with the
+ * base route's API key. The key must satisfy the credential-record grammar
+ * (lowercase, hyphenated); `name` is what selectors show.
+ */
+export const ROUTE_ALIASES: Readonly<Record<string, { readonly base: string; readonly name: string }>> = {
+  'anthropic-oauth': { base: 'anthropic', name: 'anthropicOauth' },
+}
+
+/**
+ * The base catalog provider id of an alias route.
+ * @param provider - provider route key.
+ * @returns the base id, or the key itself when it is no alias.
+ */
+export function aliasBaseOf(provider: string): string {
+  return ROUTE_ALIASES[provider]?.base ?? provider
+}
+
+/** The base provider re-identified, offering only its OAuth method. */
+function aliasProvider(
+  id: string,
+  alias: { readonly name: string },
+  base: Provider,
+  oauth: NonNullable<Provider['auth']['oauth']>,
+): Provider {
+  return {
+    id,
+    name: alias.name,
+    ...base.baseUrl === undefined ? {} : { baseUrl: base.baseUrl },
+    auth: { oauth },
+    getModels: () => base.getModels(),
+    stream: (model, context, options) => base.stream(model, context, options),
+    streamSimple: (model, context, options) => base.streamSimple(model, context, options),
+  }
 }
 
 /**
@@ -216,8 +265,8 @@ export function catalogProviderIds(): readonly string[] {
  */
 export function catalogModels(provider: string): Map<string, Model<Api>> {
   if (!catalogProviders().has(provider)) return new Map()
-  const models = getBuiltinModels(provider as BuiltinProvider) as Model<Api>[]
-  return new Map(models.map(model => [model.id, model]))
+  const models = getBuiltinModels(aliasBaseOf(provider) as BuiltinProvider) as Model<Api>[]
+  return new Map(models.map(model => [model.id, ROUTE_ALIASES[provider] === undefined ? model : { ...model, provider }]))
 }
 
 /**
