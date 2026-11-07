@@ -159,6 +159,8 @@ export type { CredentialInfo } from '@deepseek-ai/dsh-credentials/types'
 export type {
   SettingsDescribeValue, SettingsNamespaceView, SettingsPathOpView, SettingsSecretView,
 } from '@deepseek-ai/dsh-settings/types'
+// Sign-in flow vocabulary for the authorization namespace (grants never ride it).
+export type { AuthorizationEntryView, AuthorizationEvent } from '@deepseek-ai/dsh-api-settings-controller/types'
 // Provider registry and discovery vocabulary for the llm namespace.
 export type {
   LlmConfigurableProvider, LlmDiscoveredModel,

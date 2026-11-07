@@ -20,7 +20,9 @@ describe('the anthropic-oauth alias route', () => {
 
   it('serves the base models and rewrites them to the alias route key', () => {
     expect([...catalogModels('anthropic-oauth').keys()]).toEqual([...catalogModels('anthropic').keys()])
-    const { models } = resolveRouteModels({ provider: 'anthropic-oauth' })
+    const { models } = resolveRouteModels({
+      provider: 'anthropic-oauth', defaultContextWindow: 200_000, defaultMaxTokens: 8192, defaultInput: ['text'],
+    })
     expect(models.length).toBeGreaterThan(0)
     expect(models.every(model => model.provider === 'anthropic-oauth')).toBe(true)
   })

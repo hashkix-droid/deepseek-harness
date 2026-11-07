@@ -104,6 +104,11 @@ export const VIEWER_ENDPOINT_CLASSES = {
   'session/selectModel': 'owner-only', // owner selects a Session model
   'session/updateQueue': 'owner-only', // owner edits queued input
   'session/workspacePathApplications': 'owner-only', // owner applies a Workspace path
+  'authorization/answer': 'owner-only', // owner sign-in; a viewer never signs the host in
+  'authorization/begin': 'owner-only', // owner sign-in; a viewer never signs the host in
+  'authorization/cancel': 'owner-only', // owner sign-in; a viewer never signs the host in
+  'authorization/list': 'owner-only', // owner sign-in status
+  'authorization/signOut': 'owner-only', // owner sign-in; a viewer never signs the host out
   'credentials/describe': 'owner-only', // owner credentials; secrets never reach a reader
   'credentials/set': 'owner-only', // owner credentials; secrets never reach a reader
   'credentials/unset': 'owner-only', // owner credentials; secrets never reach a reader

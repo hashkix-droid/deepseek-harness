@@ -47,7 +47,9 @@ const NS = 'settings.models'
 export type {
   ModelsSettingsState, ProviderDirectoryEntry, ProviderRow,
 } from './store.ts'
-export type { ModelDiscoveryOutcome, ModelsOperations, SettingsWriteOutcome } from './operations.ts'
+export type {
+  AuthorizationOperations, AuthorizationOutcome, ModelDiscoveryOutcome, ModelsOperations, SettingsWriteOutcome,
+} from './operations.ts'
 
 /**
  * Refetch the page snapshot only after its first load: an unopened Models
@@ -65,7 +67,7 @@ export function refreshIfLoaded(controller: ModelsSettingsStore): void {
  * constrained; registration depends on each slot through `slots.inject()`.
  */
 export const inject = [
-  'slots', 'locale', 'remote', 'remote.credentials', 'remote.llm', 'remote.settings', 'remote.session',
+  'slots', 'locale', 'remote', 'remote.authorization', 'remote.credentials', 'remote.llm', 'remote.settings', 'remote.session',
   'configForms', 'settingsSchema',
 ]
 

@@ -7,7 +7,7 @@
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {
-  LlmDiscoveredModel, LlmModelDiscoveryRequest,
+  AuthorizationEvent, LlmDiscoveredModel, LlmModelDiscoveryRequest,
   SettingsNamespaceView, SettingsPathOpView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 
@@ -29,6 +29,35 @@ export type ModelDiscoveryOutcome =
   | { readonly kind: 'found'; readonly models: readonly LlmDiscoveredModel[] }
   /** The interrogation was refused, with the Host's own diagnostic. */
   | { readonly kind: 'refused'; readonly message: string }
+
+/** How a sign-in attempt ended: settled, or failed with the Host's message. */
+export type AuthorizationOutcome =
+  | { readonly status: 'authorized' | 'cancelled' }
+  | { readonly failed: string }
+
+/** The sign-in calls a route's OAuth card makes; no call returns a grant. */
+export interface AuthorizationOperations {
+  /**
+   * Whether the route's sign-in flow has a stored record, and whether an attempt is running.
+   * @param route - provider route key, which the flow's credential key ends with.
+   * @returns the flow's key and status, or undefined when no flow serves the route or the list is refused.
+   */
+  status(route: string): Promise<{ key: string; signedIn: boolean; inFlight: boolean } | undefined>
+  /**
+   * Run one attempt, reporting each notice and question as it arrives.
+   * @param key - the flow's credential key from {@link status}.
+   * @param on - receives every event before the final settlement.
+   * @param signal - withdrawing it cancels the attempt.
+   * @returns how the attempt ended.
+   */
+  signIn(key: string, on: (event: AuthorizationEvent) => void, signal: AbortSignal): Promise<AuthorizationOutcome>
+  /** Answer a waiting question; resolves the refusal message, or undefined once delivered. */
+  answer(key: string, promptId: string, value: string): Promise<string | undefined>
+  /** Withdraw the running attempt; resolves the refusal message, or undefined. */
+  cancel(key: string): Promise<string | undefined>
+  /** Delete the stored record; resolves the refusal message, or undefined. */
+  signOut(key: string): Promise<string | undefined>
+}
 
 /** The Host operations the Models page and its cards invoke. */
 export interface ModelsOperations {
@@ -65,6 +94,8 @@ export interface ModelsOperations {
    * @returns the candidates, or the refusal.
    */
   discoverModels(settingsNs: string, request: LlmModelDiscoveryRequest): Promise<ModelDiscoveryOutcome>
+  /** Sign-in calls for routes that authenticate by OAuth; absent where the host mounts none. */
+  authorization?: AuthorizationOperations
 }
 
 /**
@@ -95,5 +126,39 @@ export function createModelsOperations(ctx: ClientContext): ModelsOperations {
         ? { kind: 'found', models: response.value }
         : { kind: 'refused', message: response.error.message }
     },
+    authorization: createAuthorizationOperations(ctx),
+  }
+}
+
+/** Bind the sign-in calls to the plugin's `remote.authorization` namespace. */
+function createAuthorizationOperations(ctx: ClientContext): AuthorizationOperations {
+  const refusal = async (call: Promise<{ ok: true } | { ok: false; error: { message: string } }>): Promise<string | undefined> => {
+    const response = await call
+    return response.ok ? undefined : response.error.message
+  }
+  return {
+    status: async (route) => {
+      const response = await ctx.remote.authorization.list()
+      if (!response.ok) return undefined
+      const flow = response.value.find(entry => entry.key.endsWith(`/${route}`))
+      return flow === undefined ? undefined : { key: flow.key, signedIn: flow.signedIn, inFlight: flow.inFlight }
+    },
+    signIn: async (key, on, signal) => {
+      const stream = ctx.remote.authorization.begin(key, undefined, signal)
+      try {
+        for await (const event of stream) {
+          on(event)
+          if (event.type === 'settled') return { status: event.status }
+        }
+        return { status: 'cancelled' }
+      } catch (error: unknown) {
+        return { failed: error instanceof Error ? error.message : String(error) }
+      } finally {
+        stream.dispose()
+      }
+    },
+    answer: (key, promptId, value) => refusal(ctx.remote.authorization.answer(key, promptId, value)),
+    cancel: key => refusal(ctx.remote.authorization.cancel(key)),
+    signOut: key => refusal(ctx.remote.authorization.signOut(key)),
   }
 }

@@ -12,7 +12,7 @@ const KEY = credentialKey('llm-pi-ai', 'anthropic-oauth')
 const SECRET = 'sentinel-access-token'
 
 /** A flow that notifies, asks one question, then commits a grant carrying {@link SECRET}. */
-function flow(ctx: Context, run?: (session: AuthorizationSession) => Promise<void>): AuthorizationFlow {
+function flow(run?: (session: AuthorizationSession) => Promise<void>): AuthorizationFlow {
   return {
     key: KEY,
     label: 'anthropicOauth',
@@ -30,7 +30,7 @@ async function boot(run?: (session: AuthorizationSession) => Promise<void>): Pro
   const ctx = new Context()
   await ctx.plugin(MemoryCredentials)
   await ctx.plugin(AuthorizationService)
-  ctx.authorization.registerFlow(flow(ctx, run))
+  ctx.authorization.registerFlow(flow(run))
   await ctx.plugin(AuthorizationController)
   return ctx
 }
@@ -207,7 +207,7 @@ describe('the authorization Remote namespace a configuration surface calls', () 
     const ctx = new Context()
     await ctx.plugin(RefusingDelete)
     await ctx.plugin(AuthorizationService)
-    ctx.authorization.registerFlow(flow(ctx))
+    ctx.authorization.registerFlow(flow())
     await ctx.plugin(AuthorizationController)
     const failure = await ctx.authorizationController.signOut(KEY).catch((error: unknown) => error)
     expect(remoteErrorOf(failure)).toMatchObject({ code: 'authorization/failed', message: 'the store is read-only' })
