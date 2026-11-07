@@ -31,7 +31,7 @@ export type ModelDiscoveryOutcome =
   | { readonly kind: 'refused'; readonly message: string }
 
 /** How a sign-in attempt ended: settled, or failed with the Host's message. */
-export type AuthorizationOutcome =
+export type SignInOutcome =
   | { readonly status: 'authorized' | 'cancelled' }
   | { readonly failed: string }
 
@@ -50,7 +50,7 @@ export interface AuthorizationOperations {
    * @param signal - withdrawing it cancels the attempt.
    * @returns how the attempt ended.
    */
-  signIn(key: string, on: (event: AuthorizationEvent) => void, signal: AbortSignal): Promise<AuthorizationOutcome>
+  signIn(key: string, on: (event: AuthorizationEvent) => void, signal: AbortSignal): Promise<SignInOutcome>
   /** Answer a waiting question; resolves the refusal message, or undefined once delivered. */
   answer(key: string, promptId: string, value: string): Promise<string | undefined>
   /** Withdraw the running attempt; resolves the refusal message, or undefined. */

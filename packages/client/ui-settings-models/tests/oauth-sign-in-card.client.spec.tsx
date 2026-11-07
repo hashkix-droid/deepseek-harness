@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AuthorizationEvent } from '@deepseek-ai/dsh-api-remotes/client'
 import { OAuthSignInCard } from '../src/client/OAuthSignInCard.tsx'
-import type { AuthorizationOperations, AuthorizationOutcome } from '../src/client/operations.ts'
+import type { AuthorizationOperations, SignInOutcome } from '../src/client/operations.ts'
 import { en } from '../src/client/locales.ts'
 
 afterEach(() => {
@@ -20,13 +20,13 @@ const OUT: { signedIn: boolean; inFlight: boolean } = { signedIn: false, inFligh
 function harness(initial: { signedIn: boolean; inFlight: boolean } | null = OUT) {
   const state = { current: initial }
   let emit: (event: AuthorizationEvent) => void = () => {}
-  let settle: (outcome: AuthorizationOutcome) => void = () => {}
+  let settle: (outcome: SignInOutcome) => void = () => {}
   let signal: AbortSignal | undefined
   const status = vi.fn(() => Promise.resolve(state.current === null ? undefined : { key: KEY, ...state.current }))
   const signIn = vi.fn((_key: string, on: (event: AuthorizationEvent) => void, abort: AbortSignal) => {
     emit = on
     signal = abort
-    return new Promise<AuthorizationOutcome>((resolve) => { settle = resolve })
+    return new Promise<SignInOutcome>((resolve) => { settle = resolve })
   })
   const answer = vi.fn((..._call: [string, string, string]) => Promise.resolve<string | undefined>(undefined))
   const cancel = vi.fn(() => Promise.resolve<string | undefined>(undefined))
@@ -40,7 +40,7 @@ function harness(initial: { signedIn: boolean; inFlight: boolean } | null = OUT)
     state,
     operations,
     emit: (event: AuthorizationEvent) => { act(() => { emit(event) }) },
-    settle: async (outcome: AuthorizationOutcome) => { await act(async () => { settle(outcome) }) },
+    settle: async (outcome: SignInOutcome) => { await act(async () => { settle(outcome) }) },
     signal: () => signal,
   }
 }

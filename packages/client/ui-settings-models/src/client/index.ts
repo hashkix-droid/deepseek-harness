@@ -48,7 +48,7 @@ export type {
   ModelsSettingsState, ProviderDirectoryEntry, ProviderRow,
 } from './store.ts'
 export type {
-  AuthorizationOperations, AuthorizationOutcome, ModelDiscoveryOutcome, ModelsOperations, SettingsWriteOutcome,
+  AuthorizationOperations, ModelDiscoveryOutcome, ModelsOperations, SettingsWriteOutcome, SignInOutcome,
 } from './operations.ts'
 
 /**

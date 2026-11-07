@@ -20,6 +20,7 @@
       - option "amazon-bedrock"
       - option "ant-ling"
       - option "anthropic"
+      - option "anthropicOauth"
       - option "azure"
       - option "baseten"
       - option "cerebras"
