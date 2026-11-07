@@ -132,6 +132,24 @@ describe('the authorization Remote namespace a configuration surface calls', () 
     await first.return?.()
   })
 
+  it('leaves the running attempt alone when a second begin is refused', async () => {
+    const ctx = await boot()
+    const controller = ctx.authorizationController
+    const first = controller.begin(KEY, undefined, new AbortController().signal)[Symbol.asyncIterator]()
+    await first.next()
+    const asked = await first.next()
+    if (asked.done === true || asked.value.type !== 'prompt') throw new Error('expected the first attempt to ask')
+    await drain(controller.begin(KEY, undefined, new AbortController().signal)).catch(() => undefined)
+    await controller.answer(KEY, asked.value.promptId, 'the-code')
+    expect((await first.next()).value).toEqual({ type: 'settled', status: 'authorized' })
+  })
+
+  it('settles cancelled without running when the caller has already withdrawn', async () => {
+    const ctx = await boot()
+    const withdrawn = AbortSignal.abort()
+    expect(await drain(ctx.authorizationController.begin(KEY, undefined, withdrawn))).toEqual([{ type: 'settled', status: 'cancelled' }])
+  })
+
   it('reports a flow failure as authorization/failed with its message', async () => {
     const ctx = await boot(() => Promise.reject(new Error('the provider said no')))
     const failure = await drain(ctx.authorizationController.begin(KEY, undefined, new AbortController().signal))

@@ -89,10 +89,16 @@ export class AuthorizationController extends TypertRemoteService {
     }
     const done = { value: false }
     const parked = new Set<string>()
+    // This stream's own withdrawal, linked to the caller's: a begin the seam refuses
+    // (another attempt owns the key) must never cancel that other attempt on its way out.
+    const own = new AbortController()
+    const withdraw = (): void => { own.abort(signal.reason) }
+    if (signal.aborted) withdraw()
+    else signal.addEventListener('abort', withdraw, { once: true })
     const attempt = this.service().begin({
       key: flowKey,
       ...method === undefined ? {} : { method },
-      signal,
+      signal: own.signal,
       interaction: {
         notify: (notice) => {
           push({
@@ -124,7 +130,8 @@ export class AuthorizationController extends TypertRemoteService {
       if ('error' in settled) throw this.failure(key, settled.error)
       yield { type: 'settled', status: settled.outcome.status }
     } finally {
-      this.service().cancel(flowKey)
+      signal.removeEventListener('abort', withdraw)
+      own.abort()
       this.dropPending(parked)
     }
   }

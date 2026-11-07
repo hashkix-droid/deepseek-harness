@@ -152,6 +152,8 @@ function createAuthorizationOperations(ctx: ClientContext): AuthorizationOperati
         }
         return { status: 'cancelled' }
       } catch (error: unknown) {
+        // Withdrawing the attempt ends the stream with the abort reason; that is a cancel, not a failure.
+        if (signal.aborted) return { status: 'cancelled' }
         return { failed: error instanceof Error ? error.message : String(error) }
       } finally {
         stream.dispose()

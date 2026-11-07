@@ -219,6 +219,25 @@ describe('the OAuth sign-in card', () => {
     expect(h.signIn).not.toHaveBeenCalled()
   })
 
+  it('starts when the in-progress state it read has since ended', async () => {
+    const h = harness({ signedIn: false, inFlight: true })
+    await open(h)
+    h.state.current = { signedIn: false, inFlight: false }
+    fireEvent.click(signInButton())
+    await waitFor(() => { expect(h.signIn).toHaveBeenCalledTimes(1) })
+    expect(screen.queryByText(en.oauthInFlight)).toBeNull()
+  })
+
+  it('reports an in-progress sign-in, not a failure, when the Host refused because another attempt runs', async () => {
+    const h = harness()
+    await open(h)
+    fireEvent.click(signInButton())
+    h.state.current = { signedIn: false, inFlight: true }
+    await h.settle({ failed: 'an authorization attempt is already running' })
+    expect(await screen.findByText(en.oauthInFlight)).toBeTruthy()
+    expect(screen.queryByText(/Sign-in failed/)).toBeNull()
+  })
+
   it('disables its buttons while the page is read-only', async () => {
     const h = harness()
     await open(h, true)

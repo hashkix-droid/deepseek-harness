@@ -69,6 +69,17 @@ describe('the authorization operations the sign-in card calls', () => {
     await expect(authorization!.signIn(KEY, () => {}, new AbortController().signal)).resolves.toEqual({ failed: 'plain' })
   })
 
+  it('reports cancelled, not failed, when the stream throws because the caller aborted', async () => {
+    const abort = new AbortController()
+    const stream = {
+      dispose: vi.fn(),
+      // eslint-disable-next-line require-yield
+      async *[Symbol.asyncIterator]() { abort.abort(); throw new Error('This operation was aborted') },
+    }
+    const { authorization } = createModelsOperations(ctxWith({ begin: () => stream }))
+    await expect(authorization!.signIn(KEY, () => {}, abort.signal)).resolves.toEqual({ status: 'cancelled' })
+  })
+
   it('reports cancelled when the stream ends without settling', async () => {
     const { authorization } = createModelsOperations(ctxWith({ begin: () => handle([{ type: 'notice', message: 'x' }]) }))
     await expect(authorization!.signIn(KEY, () => {}, new AbortController().signal)).resolves.toEqual({ status: 'cancelled' })

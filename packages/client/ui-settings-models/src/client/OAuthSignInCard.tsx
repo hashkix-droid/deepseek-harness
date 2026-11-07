@@ -51,8 +51,10 @@ export function OAuthSignInCard({ route, operations, t, disabled = false }: OAut
   const [copied, setCopied] = useState(false)
   const attempt = useRef<AbortController | undefined>(undefined)
 
-  const refresh = async (): Promise<void> => {
-    setInfo(await operations.status(route))
+  const refresh = async (): Promise<Info | undefined> => {
+    const next = await operations.status(route)
+    setInfo(next)
+    return next
   }
 
   useEffect(() => {
@@ -73,10 +75,16 @@ export function OAuthSignInCard({ route, operations, t, disabled = false }: OAut
     }
   }
 
-  const start = (): void => {
+  const inFlightMessage: Message = { kind: 'info', text: t('oauthInFlight') }
+
+  const start = async (): Promise<void> => {
     if (info.inFlight) {
-      setMessage({ kind: 'info', text: t('oauthInFlight') })
-      return
+      // What the card read at mount may be out of date: ask again before refusing.
+      const fresh = await refresh()
+      if (fresh?.inFlight !== false) {
+        setMessage(inFlightMessage)
+        return
+      }
     }
     const controller = new AbortController()
     attempt.current = controller
@@ -88,8 +96,13 @@ export function OAuthSignInCard({ route, operations, t, disabled = false }: OAut
       setWaiting(false)
       setNotice(undefined)
       setPrompt(undefined)
-      if ('failed' in outcome) setMessage({ kind: 'error', text: t('oauthFailed').replace('{message}', () => outcome.failed) })
-      await refresh()
+      const fresh = await refresh()
+      if ('failed' in outcome) {
+        // A refusal because another attempt owns the flow is "in progress", not a failure.
+        setMessage(fresh?.inFlight === true
+          ? inFlightMessage
+          : { kind: 'error', text: t('oauthFailed').replace('{message}', () => outcome.failed) })
+      }
     })
   }
 
@@ -187,7 +200,7 @@ export function OAuthSignInCard({ route, operations, t, disabled = false }: OAut
                 </button>
               )
               : (
-                <button type="button" className={styles['primaryButton']} disabled={disabled} onClick={start}>
+                <button type="button" className={styles['primaryButton']} disabled={disabled} onClick={() => { void start() }}>
                   {failed ? t('oauthRetry') : t('oauthSignIn')}
                 </button>
               )}
