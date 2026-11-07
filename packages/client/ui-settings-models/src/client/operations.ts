@@ -138,8 +138,9 @@ function createAuthorizationOperations(ctx: ClientContext): AuthorizationOperati
   }
   return {
     status: async (route) => {
-      const response = await ctx.remote.authorization.list()
-      if (!response.ok) return undefined
+      // A host that does not serve the namespace (an older build) simply has no sign-in to offer.
+      const response = await Promise.resolve().then(() => ctx.remote.authorization.list()).catch(() => undefined)
+      if (response?.ok !== true) return undefined
       const flow = response.value.find(entry => entry.key.endsWith(`/${route}`))
       return flow === undefined ? undefined : { key: flow.key, signedIn: flow.signedIn, inFlight: flow.inFlight }
     },

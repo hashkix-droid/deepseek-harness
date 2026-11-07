@@ -40,6 +40,11 @@ describe('the authorization operations the sign-in card calls', () => {
     await expect(authorization!.status('anthropic-oauth')).resolves.toBeUndefined()
   })
 
+  it('reports no status when this build has no authorization namespace at all', async () => {
+    const { authorization } = createModelsOperations(Object.assign(new Context(), { remote: {} }))
+    await expect(authorization!.status('anthropic-oauth')).resolves.toBeUndefined()
+  })
+
   it('forwards stream events and resolves with the settled status', async () => {
     const events: AuthorizationEvent[] = [
       { type: 'notice', message: 'Open it', url: 'https://auth.example' },
