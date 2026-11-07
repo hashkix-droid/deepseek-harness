@@ -554,6 +554,45 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'authorizationController',
+    summary: 'Host service backing the generated `ctx.remote.authorization` namespace.',
+    description: 'Host service backing the generated `ctx.remote.authorization` namespace. It carries the wire obligations the authorization seam does not: key validation against the registered flows, the field-by-field view projection, the refusal mapping, and the prompt round trip. Secret values cross in one direction only — an answer goes in, and no method returns a stored grant.',
+    methods: [
+      {
+        signature: '@Remote async list(): Promise<AuthorizationEntryView[]>',
+        description: 'List every registered flow with whether its record exists.',
+        parameters: [],
+        returns: 'one view per flow.',
+        throws: ['RemoteError when no authorization service is mounted.'],
+      },
+      {
+        signature: '@Remote({ mode: \'stream\' }) async *begin(key: string, method: string | undefined, signal: AbortSignal): AsyncIterable<AuthorizationEvent>',
+        description: 'Run one attempt, reporting what it says and asks until it settles. Aborting the stream withdraws the attempt.',
+        parameters: [{ name: 'key', description: 'credential key of a registered flow.' }, { name: 'method', description: 'method id; the flow\'s first when absent.' }, { name: 'signal', description: 'caller withdrawal.' }],
+        returns: 'notices and prompts in order, then a final `settled`.',
+        throws: ['RemoteError `authorization/failed` when the attempt fails or is refused.'],
+      },
+      {
+        signature: '@Remote // eslint-disable-next-line @typescript-eslint/require-await -- refusals must reject, never throw synchronously async answer(key: string, promptId: string, value: string): Promise<void>',
+        description: 'Answer the question an attempt is waiting on.',
+        parameters: [{ name: 'key', description: 'credential key of the running flow.' }, { name: 'promptId', description: 'the id its `prompt` event carried.' }, { name: 'value', description: 'the human\'s answer.' }],
+        throws: ['RemoteError `gateway/bad-request` when the key or question is unknown.'],
+      },
+      {
+        signature: '@Remote // eslint-disable-next-line @typescript-eslint/require-await -- refusals must reject, never throw synchronously async cancel(key: string): Promise<void>',
+        description: 'Withdraw a running attempt (idempotent).',
+        parameters: [{ name: 'key', description: 'credential key of a registered flow.' }],
+        throws: ['RemoteError `gateway/bad-request` when the key names no flow.'],
+      },
+      {
+        signature: '@Remote async signOut(key: string): Promise<void>',
+        description: 'Delete the stored record so the flow is signed out (idempotent).',
+        parameters: [{ name: 'key', description: 'credential key of a registered flow.' }],
+        throws: ['RemoteError `gateway/bad-request` when the key names no flow, or `authorization/failed` when the store refuses.'],
+      },
+    ],
+  },
+  {
     key: 'browserUse',
     summary: 'Owns one optional provider registration in the shared browser-use service.',
     description: 'Owns one optional provider registration in the shared browser-use service.',
@@ -5714,6 +5753,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'AuthorizationEntry',
     declaration: 'export interface AuthorizationEntry {\n    key: CredentialKey;\n    label: string;\n    methods: readonly AuthorizationMethod[];\n    inFlight: boolean;\n}',
+  },
+  {
+    name: 'AuthorizationEntryView',
+    declaration: 'export interface AuthorizationEntryView {\n    readonly key: string;\n    readonly label: string;\n    readonly methods: readonly {\n        readonly id: string;\n        readonly label: string;\n    }[];\n    readonly inFlight: boolean;\n    readonly signedIn: boolean;\n}',
+  },
+  {
+    name: 'AuthorizationEvent',
+    declaration: 'export type AuthorizationEvent = {\n    readonly type: \'notice\';\n    readonly message: string;\n    readonly url?: string;\n    readonly code?: string;\n} | {\n    readonly type: \'prompt\';\n    readonly promptId: string;\n    readonly kind: \'text\' | \'secret\' | \'select\';\n    readonly message: string;\n    readonly placeholder?: string;\n    readonly options?: readonly {\n        readonly id: string;\n        readonly label: string;\n    }[];\n} | {\n    readonly type: \'settled\';\n    readonly status: \'authorized\' | \'cancelled\';\n};',
   },
   {
     name: 'AuthorizationFlow',

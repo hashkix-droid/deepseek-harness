@@ -131,6 +131,57 @@ async begin(request: AuthorizationRequest): Promise<AuthorizationOutcome>
 
 Source: [`packages/credentials/authorization/src/index.ts`](../../packages/credentials/authorization/src/index.ts)
 
+<a id="ctxauthorizationcontroller--authorizationcontroller"></a>
+
+### `ctx.authorizationController` — `AuthorizationController`
+
+Host service backing the generated `ctx.remote.authorization` namespace. It carries the wire obligations the authorization seam does not: key validation against the registered flows, the field-by-field view projection, the refusal mapping, and the prompt round trip. Secret values cross in one direction only — an answer goes in, and no method returns a stored grant.
+
+```ts cordis-catalog
+/**
+ * List every registered flow with whether its record exists.
+ * @returns one view per flow.
+ * @throws RemoteError when no authorization service is mounted.
+ */
+@Remote async list(): Promise<AuthorizationEntryView[]>
+
+/**
+ * Run one attempt, reporting what it says and asks until it settles.
+ * Aborting the stream withdraws the attempt.
+ * @param key - credential key of a registered flow.
+ * @param method - method id; the flow's first when absent.
+ * @param signal - caller withdrawal.
+ * @returns notices and prompts in order, then a final `settled`.
+ * @throws RemoteError `authorization/failed` when the attempt fails or is refused.
+ */
+@Remote({ mode: 'stream' }) async *begin(key: string, method: string | undefined, signal: AbortSignal): AsyncIterable<AuthorizationEvent>
+
+/**
+ * Answer the question an attempt is waiting on.
+ * @param key - credential key of the running flow.
+ * @param promptId - the id its `prompt` event carried.
+ * @param value - the human's answer.
+ * @throws RemoteError `gateway/bad-request` when the key or question is unknown.
+ */
+@Remote // eslint-disable-next-line @typescript-eslint/require-await -- refusals must reject, never throw synchronously async answer(key: string, promptId: string, value: string): Promise<void>
+
+/**
+ * Withdraw a running attempt (idempotent).
+ * @param key - credential key of a registered flow.
+ * @throws RemoteError `gateway/bad-request` when the key names no flow.
+ */
+@Remote // eslint-disable-next-line @typescript-eslint/require-await -- refusals must reject, never throw synchronously async cancel(key: string): Promise<void>
+
+/**
+ * Delete the stored record so the flow is signed out (idempotent).
+ * @param key - credential key of a registered flow.
+ * @throws RemoteError `gateway/bad-request` when the key names no flow, or `authorization/failed` when the store refuses.
+ */
+@Remote async signOut(key: string): Promise<void>
+```
+
+Source: [`packages/api/settings-controller/src/authorization.ts`](../../packages/api/settings-controller/src/authorization.ts)
+
 <a id="ctxcredentials--credentialprovider-abstract-seam"></a>
 
 ### `ctx.credentials` — `CredentialProvider` (abstract seam)

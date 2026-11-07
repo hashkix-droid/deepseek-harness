@@ -383,6 +383,13 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Projects the credential-reference seam onto the generated Remote namespace: batch fan-out, view projection, and refusal mapping live here, not on the seam Definition.',
   },
   {
+    key: 'authorizationController',
+    pkg: 'api-settings-controller',
+    title: 'Host authorization Remote controller',
+    mode: 'core',
+    note: 'Projects the authorization seam onto the generated Remote namespace: key validation, the prompt round trip and refusal mapping live here; no method returns a stored grant.',
+  },
+  {
     key: 'settingsController',
     pkg: 'api-settings-controller',
     title: 'Host settings-surface Remote controller',
