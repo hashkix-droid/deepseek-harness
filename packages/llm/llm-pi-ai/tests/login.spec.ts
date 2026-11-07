@@ -104,6 +104,19 @@ describe('pi-ai login flows', () => {
       .toEqual(['api-key'])
   })
 
+  it('offers anthropic-oauth an oauth-only flow that signs into a record of its own', async () => {
+    const ctx = await harness()
+    const alias = recordKeyFor('anthropic-oauth')
+
+    expect(ctx.authorization.list().find(entry => entry.key === alias)?.methods.map(one => one.id)).toEqual(['oauth'])
+
+    await attempt(ctx, () => Promise.resolve(), { key: alias })
+    expect(login).toHaveBeenLastCalledWith('anthropic-oauth', 'oauth', expect.anything())
+    await expect(ctx.credentials.readRecord(alias)).resolves.toMatchObject({ kind: 'grant' })
+    // The base route's record is untouched, so an API key there survives.
+    await expect(ctx.credentials.readRecord(recordKeyFor('anthropic'))).resolves.toBeUndefined()
+  })
+
   it('runs the pi-ai auth type the chosen method names', async () => {
     const ctx = await harness()
 

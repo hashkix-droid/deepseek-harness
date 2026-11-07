@@ -190,10 +190,9 @@ function catalogProviders(): Map<string, Provider> {
   for (const provider of builtinProviders().filter(servesChat)) {
     index.set(provider.id, provider)
     for (const [aliasId, alias] of Object.entries(ROUTE_ALIASES)) {
+      if (alias.base !== provider.id) continue
       const { oauth } = provider.auth
-      if (alias.base === provider.id && oauth !== undefined) {
-        index.set(aliasId, aliasProvider(aliasId, alias, provider, oauth))
-      }
+      if (oauth !== undefined) index.set(aliasId, aliasProvider(aliasId, alias, provider, oauth))
     }
   }
   providerIndex = index

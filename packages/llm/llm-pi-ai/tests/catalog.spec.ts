@@ -149,6 +149,21 @@ describe('hand-declared providers', () => {
     expect(directory.find(entry => entry.provider === 'deepseek')?.declared).toBe(false)
   })
 
+  it('offers anthropicOauth directly below anthropic as a keyless OAuth route', async () => {
+    const server = await mockServer([])
+    const ctx = await harness(gateway(`${server.url}/v1`))
+    const directory = ctx.llm.listConfigurableProviders()
+    const index = directory.findIndex(entry => entry.provider === 'anthropic')
+
+    expect(directory[index + 1]).toMatchObject({
+      provider: 'anthropic-oauth',
+      displayName: 'anthropicOauth',
+      settingsPath: ['providers', 'anthropic-oauth'],
+      declared: false,
+      nativeAuth: { env: [], oauth: true },
+    })
+  })
+
   it('sizes a model the catalog cannot describe from the route\u2019s own fallbacks', () => {
     const resolved = resolveProfiles({
       'acme-gateway': {
